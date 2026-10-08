@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>MC Web AFK Panel</title>
+  <style>
+    body { font-family: monospace; background: #1e1e1e; color: #fff; padding: 20px; }
+    #chat { width: 100%; height: 350px; background: #000; overflow-y: scroll; border: 1px solid #444; padding: 10px; box-sizing: border-box; }
+    #input-box { display: flex; margin-top: 10px; }
+    input { flex: 1; padding: 10px; background: #222; color: #fff; border: 1px solid #444; }
+    button { padding: 10px 20px; background: #28a745; color: #fff; border: none; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h2>Minecraft Web AFK Paneli</h2>
+  <div id="chat"></div>
+  <div id="input-box">
+    <input type="text" id="msg" placeholder="Mesaj yazın veya komut girin (/login vb.)...">
+    <button onclick="send()">Gönder</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const chat = document.getElementById('chat');
+
+    socket.on('chatMessage', (data) => {
+      const msgEl = document.createElement('div');
+      msgEl.textContent = `<${data.user}> ${data.text}`;
+      chat.appendChild(msgEl);
+      chat.scrollTop = chat.scrollHeight;
+    });
+
+    function send() {
+      const input = document.getElementById('msg');
+      if (input.value) {
+        socket.emit('sendChat', input.value);
+        input.value = '';
+      }
+    }
+  </script>
+</body>
+</html>
