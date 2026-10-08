@@ -9,68 +9,56 @@ const io = socketIo(server);
 
 app.use(express.static('public'));
 
-// Maksimum 5 Bot Yapısı
-const MAX_BOTS = 5;
-const bots = {}; // botId: { instance, options, reconnectTimeout, manualStop }
+let bot = null;
+let botOptions = {
+  host: 'play.mc4fun.net',
+  port: 25565,
+  username: 'nusretyasir',
+  password: '',
+  autoSkyblock: false,
+  autoReconnect: true,
+  cmdDelay: 3000
+};
 
-for (let i = 1; i <= MAX_BOTS; i++) {
-  bots[i] = {
-    instance: null,
-    options: {
-      host: 'play.mc4fun.net',
-      port: 25565,
-      username: `bot_${i}`,
-      password: '',
-      autoSkyblock: false,
-      autoReconnect: true,
-      cmdDelay: 3000
-    },
-    reconnectTimeout: null,
-    manualStop: false
-  };
-}
+let reconnectTimeout = null;
 
-function cleanupBot(botId) {
-  const b = bots[botId];
-  if (b && b.instance) {
+function cleanupBot() {
+  if (bot) {
     try {
-      b.instance.removeAllListeners();
-      b.instance.end();
+      bot.removeAllListeners();
+      bot.end();
     } catch (e) {}
-    b.instance = null;
+    bot = null;
   }
 }
 
-function sendStats(botId) {
-  const b = bots[botId];
-  if (b && b.instance && b.instance.entity) {
+function sendStats() {
+  if (bot && bot.entity) {
     const stats = {
-      botId: botId,
-      health: b.instance.health || 0,
-      food: b.instance.food || 0,
+      health: bot.health || 0,
+      food: bot.food || 0,
       pos: {
-        x: Math.round(b.instance.position.x),
-        y: Math.round(b.instance.position.y),
-        z: Math.round(b.instance.position.z)
+        x: Math.round(bot.entity.position.x),
+        y: Math.round(bot.entity.position.y),
+        z: Math.round(bot.entity.position.z)
       }
     };
     io.emit('statsUpdate', stats);
   }
 }
 
-function sendInventory(botId) {
-  const b = bots[botId];
-  if (!b || !b.instance || !b.instance.inventory) return;
-  const items = b.instance.inventory.items().map(item => ({
+function sendInventory() {
+  if (!bot || !bot.inventory) return;
+  const items = bot.inventory.items().map(item => ({
     slot: item.slot,
     name: item.name,
     count: item.count,
     displayName: item.displayName
   }));
-  io.emit('inventoryUpdate', { botId, items });
+  io.emit('inventoryUpdate', items);
 }
 
-function sendWindowData(botId, window) {
+function sendWindowData(window) {
   if (!window) return;
   const slots = window.slots.map((item, index) => {
     if (!item) return { slot: index, empty: true };
@@ -102,193 +90,164 @@ function sendWindowData(botId, window) {
   }
 
   io.emit('openWindow', {
-    botId: botId,
     title: titleText,
     slots: slots
   });
 }
 
-function createBot(botId) {
-  cleanupBot(botId);
-  const b = bots[botId];
-  b.manualStop = false;
+function createBot() {
+  cleanupBot();
 
-  io.emit('status', { botId, status: 'connecting' });
-  io.emit('chat', { botId, msg: `[SİSTEM] ${b.options.username} adıyla sunucuya bağlanılıyor...` });
+  io.emit('status', 'connecting');
+  io.emit('chat', `[SİSTEM] ${botOptions.username} adıyla sunucuya bağlanılıyor...`);
 
-  b.instance = mineflayer.createBot({
-    host: b.options.host,
-    port: b.options.port,
-    username: b.options.username,
+  bot = mineflayer.createBot({
+    host: botOptions.host,
+    port: botOptions.port,
+    username: botOptions.username,
     version: false
   });
 
-  const botObj = b.instance;
+  bot.on('health', sendStats);
+  bot.on('move', sendStats);
 
-  botObj.on('health', () => sendStats(botId));
-  botObj.on('move', () => sendStats(botId));
+  bot.on('spawn', () => {
+    io.emit('status', 'online');
+    io.emit('chat', `[SİSTEM] Bot (${botOptions.username}) başarıyla ${botOptions.host} sunucusuna girdi!`);
+    sendStats();
+    sendInventory();
 
-  botObj.on('spawn', () => {
-    io.emit('status', { botId, status: 'online' });
-    io.emit('chat', { botId, msg: `[SİSTEM] Bot (${b.options.username}) başarıyla bağlandı!` });
-    sendStats(botId);
-    sendInventory(botId);
-
-    if (b.options.autoSkyblock) {
+    if (botOptions.autoSkyblock) {
       setTimeout(() => {
-        if (b.instance) {
-          b.instance.chat('/skyblock');
-          io.emit('chat', { botId, msg: '[SİZ]: /skyblock' });
+        if (bot) {
+          bot.chat('/skyblock');
+          io.emit('chat', '[SİZ]: /skyblock');
         }
-      }, b.options.cmdDelay || 3000);
+      }, botOptions.cmdDelay || 3000);
     }
   });
 
-  botObj.on('windowOpen', (window) => {
-    sendWindowData(botId, window);
-    window.on('updateSlot', () => sendWindowData(botId, window));
-    window.on('close', () => io.emit('closeWindow', { botId }));
+  // Envanter güncellendiğinde
+  bot.on('windowOpen', (window) => {
+    sendWindowData(window);
+    window.on('updateSlot', () => sendWindowData(window));
+    window.on('close', () => io.emit('closeWindow'));
   });
 
-  botObj.on('chat', (username, message) => {
-    io.emit('chat', { botId, msg: `${username}: ${message}` });
+  bot.on('chat', (username, message) => {
+    io.emit('chat', `${username}: ${message}`);
   });
 
-  botObj.on('messagestr', (message) => {
+  bot.on('messagestr', (message) => {
     if (message.trim()) {
-      io.emit('chat', { botId, msg: message });
+      io.emit('chat', message);
     }
   });
 
-  botObj.on('kicked', (reason) => {
+  bot.on('kicked', (reason) => {
     const reasonText = typeof reason === 'object' ? JSON.stringify(reason) : reason;
-    io.emit('status', { botId, status: 'offline' });
-    io.emit('chat', { botId, msg: `[SİSTEM] Sunucudan atıldı: ${reasonText}` });
-    cleanupBot(botId);
-    handleReconnect(botId);
+    io.emit('status', 'offline');
+    io.emit('chat', `[SİSTEM] Sunucudan atıldı: ${reasonText}`);
+    cleanupBot();
+    handleReconnect();
   });
 
-  botObj.on('error', (err) => {
-    io.emit('status', { botId, status: 'offline' });
-    io.emit('chat', { botId, msg: `[SİSTEM] Hata: ${err.message}` });
-    cleanupBot(botId);
-    handleReconnect(botId);
+  bot.on('error', (err) => {
+    io.emit('status', 'offline');
+    io.emit('chat', `[SİSTEM] Hata: ${err.message}`);
+    cleanupBot();
+    handleReconnect();
   });
 
-  botObj.on('end', () => {
-    io.emit('status', { botId, status: 'offline' });
-    io.emit('chat', { botId, msg: '[SİSTEM] Sunucu bağlantısı koptu.' });
-    cleanupBot(botId);
-    handleReconnect(botId);
+  bot.on('end', () => {
+    io.emit('status', 'offline');
+    io.emit('chat', '[SİSTEM] Sunucu bağlantısı koptu.');
+    cleanupBot();
+    handleReconnect();
   });
 }
 
-function handleReconnect(botId) {
-  const b = bots[botId];
-  // Eğer kullanıcı web'den "Durdur" butonuna basmadıysa tekrar bağlanır
-  if (b.options.autoReconnect && !b.manualStop) {
-    if (b.reconnectTimeout) clearTimeout(b.reconnectTimeout);
-    io.emit('chat', { botId, msg: '[SİSTEM] 10 saniye içinde otomatik tekrar bağlanılacak...' });
-    b.reconnectTimeout = setTimeout(() => {
-      createBot(botId);
+function handleReconnect() {
+  if (botOptions.autoReconnect) {
+    if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    io.emit('chat', '[SİSTEM] 10 saniye içinde otomatik tekrar bağlanılacak...');
+    reconnectTimeout = setTimeout(() => {
+      createBot();
     }, 10000);
   }
 }
 
 io.on('connection', (socket) => {
-  // Tüm botların durumlarını gönder
-  for (let i = 1; i <= MAX_BOTS; i++) {
-    const b = bots[i];
-    socket.emit('status', { 
-      botId: i, 
-      status: (b.instance && b.instance.entity) ? 'online' : 'offline' 
-    });
-    sendStats(i);
-  }
+  socket.emit('status', (bot && bot.entity) ? 'online' : 'offline');
+  sendStats();
+  if (bot) sendInventory();
 
   socket.on('startBot', (data) => {
-    const botId = data.botId || 1;
-    const b = bots[botId];
-
-    b.options.host = data.host || 'play.mc4fun.net';
-    b.options.port = parseInt(data.port) || 25565;
-    b.options.username = data.username && data.username.trim() !== '' ? data.username.trim() : `bot_${botId}`;
-    b.options.password = data.password || '';
-    b.options.autoSkyblock = data.autoSkyblock !== undefined ? data.autoSkyblock : false;
-    b.options.autoReconnect = data.autoReconnect !== undefined ? data.autoReconnect : true;
-    b.options.cmdDelay = parseInt(data.cmdDelay) || 3000;
+    botOptions.host = data.host || 'play.mc4fun.net';
+    botOptions.port = parseInt(data.port) || 25565;
+    botOptions.username = data.username && data.username.trim() !== '' ? data.username.trim() : 'nusretyasir';
+    botOptions.password = data.password || '';
+    botOptions.autoSkyblock = data.autoSkyblock !== undefined ? data.autoSkyblock : false;
+    botOptions.autoReconnect = data.autoReconnect !== undefined ? data.autoReconnect : true;
+    botOptions.cmdDelay = parseInt(data.cmdDelay) || 3000;
     
-    if (b.reconnectTimeout) clearTimeout(b.reconnectTimeout);
-    createBot(botId);
+    if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    createBot();
   });
 
-  // Oyundan Manuel Çıkarma / Bağlantı Kesme
-  socket.on('stopBot', (botId) => {
-    const b = bots[botId];
-    if (b) {
-      b.manualStop = true; // Otomatik tekrar bağlanmayı engelle
-      if (b.reconnectTimeout) clearTimeout(b.reconnectTimeout);
-      cleanupBot(botId);
-      io.emit('status', { botId, status: 'offline' });
-      io.emit('chat', { botId, msg: '[SİSTEM] Bağlantı web üzerinden manuel olarak kesildi. Oyuna rahatça girebilirsiniz.' });
-    }
+  socket.on('reconnectBot', () => {
+    if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    createBot();
   });
 
-  socket.on('reconnectBot', (botId) => {
-    const b = bots[botId];
-    if (b && b.reconnectTimeout) clearTimeout(b.reconnectTimeout);
-    createBot(botId);
-  });
-
-  socket.on('sendLogin', (data) => {
-    const { botId, password } = data;
-    const b = bots[botId];
-    const passToSend = password || (b ? b.options.password : '');
-    if (b && b.instance) {
+  socket.on('sendLogin', (pwd) => {
+    const passToSend = pwd || botOptions.password;
+    if (bot) {
       if (passToSend && passToSend.trim() !== '') {
-        b.instance.chat(`/login ${passToSend}`);
-        io.emit('chat', { botId, msg: '[SİZ]: /login ********' });
+        bot.chat(`/login ${passToSend}`);
+        io.emit('chat', '[SİZ]: /login ********');
       } else {
-        io.emit('chat', { botId, msg: '[SİSTEM] Şifre alanı boş!' });
+        io.emit('chat', '[SİSTEM] Şifre alanı boş! Lütfen şifre girin.');
       }
     } else {
-      io.emit('chat', { botId, msg: '[SİSTEM] Bot oyunda değil!' });
+      io.emit('chat', '[SİSTEM] Bot oyunda değil!');
     }
   });
 
-  socket.on('sendCmd', (data) => {
-    const { botId, cmd } = data;
-    const b = bots[botId];
-    if (b && b.instance) {
-      b.instance.chat(cmd);
-      io.emit('chat', { botId, msg: `[SİZ]: ${cmd}` });
+  socket.on('sendCmd', (cmd) => {
+    if (bot) {
+      bot.chat(cmd);
+      io.emit('chat', `[SİZ]: ${cmd}`);
+    } else {
+      io.emit('chat', '[SİSTEM] Bot oyunda değil!');
     }
   });
 
-  socket.on('sendMessage', (data) => {
-    const { botId, msg } = data;
-    const b = bots[botId];
-    if (b && b.instance) {
-      b.instance.chat(msg);
-      io.emit('chat', { botId, msg: `[SİZ]: ${msg}` });
+  socket.on('sendMessage', (msg) => {
+    if (bot) {
+      bot.chat(msg);
+      io.emit('chat', `[SİZ]: ${msg}`);
+    } else {
+      io.emit('chat', '[SİSTEM] Bot oyunda değil!');
     }
   });
 
-  socket.on('clickSlot', (data) => {
-    const { botId, slotIndex } = data;
-    const b = bots[botId];
-    if (b && b.instance && b.instance.currentWindow) {
+  // GUI Slot Tıklaması
+  socket.on('clickSlot', (slotIndex) => {
+    if (bot && bot.currentWindow) {
       try {
-        b.instance.clickWindow(slotIndex, 0, 0);
-      } catch (e) {}
+        bot.clickWindow(slotIndex, 0, 0);
+      } catch (e) {
+        console.log('Slot tıklama hatası:', e.message);
+      }
     }
   });
 
-  socket.on('closeCurrentWindow', (botId) => {
-    const b = bots[botId];
-    if (b && b.instance && b.instance.currentWindow) {
+  // GUI Menüsünü Kapatma
+  socket.on('closeCurrentWindow', () => {
+    if (bot && bot.currentWindow) {
       try {
-        b.instance.closeWindow(b.instance.currentWindow);
+        bot.closeWindow(bot.currentWindow);
       } catch (e) {}
     }
   });
