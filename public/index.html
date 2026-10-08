@@ -2,41 +2,295 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>MC Web AFK Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minecraft AFK Portal - mc4fun</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code&display=swap" rel="stylesheet">
   <style>
-    body { font-family: monospace; background: #1e1e1e; color: #fff; padding: 20px; }
-    #chat { width: 100%; height: 350px; background: #000; overflow-y: scroll; border: 1px solid #444; padding: 10px; box-sizing: border-box; }
-    #input-box { display: flex; margin-top: 10px; }
-    input { flex: 1; padding: 10px; background: #222; color: #fff; border: 1px solid #444; }
-    button { padding: 10px 20px; background: #28a745; color: #fff; border: none; cursor: pointer; }
+    * { box-sizing: border-box; transition: all 0.2s ease; }
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background: linear-gradient(135deg, #0f0c20 0%, #1a103c 100%); 
+      color: #e2e8f0; 
+      margin: 0; 
+      padding: 20px; 
+      min-height: 100vh;
+    }
+    .container { 
+      max-width: 900px; 
+      margin: 0 auto; 
+      background: rgba(23, 15, 38, 0.85); 
+      backdrop-filter: blur(12px);
+      padding: 25px; 
+      border-radius: 16px; 
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 15px;
+    }
+    h2 { margin: 0; color: #a78bfa; font-weight: 700; font-size: 24px; }
+    .badge {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge-online { background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid #34d399; }
+    .badge-offline { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid #f87171; }
+    .badge-connecting { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid #fbbf24; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    
+    .guide-card {
+      background: rgba(167, 139, 250, 0.08);
+      border: 1px dashed rgba(167, 139, 250, 0.3);
+      padding: 12px 18px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+    .guide-card b { color: #a78bfa; }
+
+    .input-field { display: flex; flex-direction: column; gap: 4px; }
+    .input-field field-title { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+
+    .config-panel { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+      gap: 12px; 
+      margin-bottom: 20px; 
+      background: rgba(255, 255, 255, 0.03); 
+      padding: 18px; 
+      border-radius: 12px; 
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    input[type="text"], input[type="password"] { 
+      padding: 10px 14px; 
+      border-radius: 8px; 
+      border: 1px solid rgba(255, 255, 255, 0.15); 
+      background: rgba(15, 12, 32, 0.6); 
+      color: #fff; 
+      font-size: 14px;
+      outline: none;
+      width: 100%;
+    }
+    input:focus { border-color: #a78bfa; box-shadow: 0 0 10px rgba(167, 139, 250, 0.3); }
+    
+    .checkbox-group {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    label { font-size: 13px; color: #cbd5e1; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    
+    .btn-group { grid-column: 1 / -1; display: flex; gap: 10px; margin-top: 5px; }
+    button { 
+      padding: 12px 18px; 
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-connect { background: #8b5cf6; color: #fff; flex: 2; }
+    .btn-connect:hover { background: #7c3aed; }
+    .btn-reconnect { background: #f59e0b; color: #fff; flex: 1; }
+    .btn-reconnect:hover { background: #d97706; }
+
+    .quick-cmds {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .quick-title { font-size: 12px; color: #94a3b8; font-weight: 600; margin-right: 5px; }
+    .btn-cmd {
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      padding: 8px 14px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .btn-cmd:hover { background: #a78bfa; color: #fff; }
+    .btn-skyblock { background: #10b981; color: #fff; font-weight: 700; }
+    .btn-skyblock:hover { background: #059669; }
+
+    .chat-container { position: relative; }
+    #chat-box { 
+      height: 350px; 
+      overflow-y: auto; 
+      background: #090613; 
+      border: 1px solid rgba(255, 255, 255, 0.1); 
+      padding: 15px; 
+      border-radius: 12px; 
+      margin-bottom: 12px; 
+      font-family: 'Fira Code', monospace; 
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .chat-msg { margin-bottom: 4px; word-break: break-word; }
+    .system-msg { color: #38bdf8; font-weight: 600; }
+    .clear-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: rgba(255,255,255,0.1);
+      color: #94a3b8;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .clear-btn:hover { background: #ef4444; color: #fff; }
+
+    .input-group { display: flex; gap: 10px; }
+    .input-group input { flex: 1; }
+    .btn-send { background: #a78bfa; color: #fff; padding: 0 24px; }
+    .btn-send:hover { background: #8b5cf6; }
   </style>
 </head>
 <body>
-  <h2>Minecraft Web AFK Paneli</h2>
-  <div id="chat"></div>
-  <div id="input-box">
-    <input type="text" id="msg" placeholder="Mesaj yazın veya komut girin (/login vb.)...">
-    <button onclick="send()">Gönder</button>
+  <div class="container">
+    <div class="header">
+      <h2>🎮 Minecraft AFK Portal</h2>
+      <div id="statusBadge" class="badge badge-offline">
+        <span class="dot"></span> <span id="statusText">Çevrimdışı</span>
+      </div>
+    </div>
+
+    <div class="guide-card">
+      💡 <b>Nasıl Kullanılır?</b> <b>"⚡ Sunucuya Bağlan"</b> butonuna basın. Bot otomatik bağlanacak, oyuna girecek ve Skyblock adanıza geçecektir.
+    </div>
+    
+    <div class="config-panel">
+      <div class="input-field">
+        <field-title>Sunucu Adresi</field-title>
+        <input type="text" id="host" value="play.mc4fun.net" placeholder="Örn: play.mc4fun.net">
+      </div>
+      <div class="input-field">
+        <field-title>Port</field-title>
+        <input type="text" id="port" value="25565" placeholder="25565">
+      </div>
+      <div class="input-field">
+        <field-title>Minecraft Kullanıcı Adı</field-title>
+        <input type="text" id="username" value="nusretyasir" placeholder="Oyundaki İsim">
+      </div>
+      <div class="input-field">
+        <field-title>Giriş Şifresi (/login)</field-title>
+        <input type="password" id="password" value="2013" placeholder="Şifreniz">
+      </div>
+      
+      <div class="checkbox-group">
+        <label>
+          <input type="checkbox" id="autoSkyblock" checked> Otomatik Skyblock'a Geç (/skyblock)
+        </label>
+        <label>
+          <input type="checkbox" id="autoReconnect" checked> Kopunca Otomatik Tekrar Bağlan (10sn)
+        </label>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn-connect" onclick="startBot()">⚡ Sunucuya Bağlan / Başlat</button>
+        <button class="btn-reconnect" onclick="reconnectBot()">🔄 Yeniden Bağlan</button>
+      </div>
+    </div>
+
+    <div class="quick-cmds">
+      <span class="quick-title">Hızlı Komutlar:</span>
+      <button class="btn-cmd btn-skyblock" onclick="sendCmd('/skyblock')">🏝️ /skyblock</button>
+      <button class="btn-cmd" onclick="sendCmd('/is')">🏠 /is (Ada)</button>
+      <button class="btn-cmd" onclick="sendCmd('/afk')">💤 /afk</button>
+      <button class="btn-cmd" onclick="sendCmd('/spawn')">📍 /spawn</button>
+      <button class="btn-cmd" onclick="sendCmd('/ping')">📶 /ping</button>
+    </div>
+
+    <div class="chat-container">
+      <button class="clear-btn" onclick="clearChat()">Sohbeti Temizle</button>
+      <div id="chat-box"></div>
+    </div>
+
+    <div class="input-group">
+      <input type="text" id="message" placeholder="Sohbete mesaj yazın veya komut girin (/is, /msg vb)..." onkeypress="if(event.key==='Enter') sendMessage()">
+      <button class="btn-send" onclick="sendMessage()">Gönder</button>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-    const chat = document.getElementById('chat');
+    const chatBox = document.getElementById('chat-box');
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
 
-    socket.on('chatMessage', (data) => {
-      const msgEl = document.createElement('div');
-      msgEl.textContent = `<${data.user}> ${data.text}`;
-      chat.appendChild(msgEl);
-      chat.scrollTop = chat.scrollHeight;
+    socket.on('status', (status) => {
+      if (status === 'online') {
+        statusBadge.className = 'badge badge-online';
+        statusText.innerText = 'Çevrimiçi (Oyunda)';
+      } else if (status === 'connecting') {
+        statusBadge.className = 'badge badge-connecting';
+        statusText.innerText = 'Bağlanılıyor...';
+      } else {
+        statusBadge.className = 'badge badge-offline';
+        statusText.innerText = 'Çevrimdışı';
+      }
     });
 
-    function send() {
-      const input = document.getElementById('msg');
-      if (input.value) {
-        socket.emit('sendChat', input.value);
+    socket.on('chat', (msg) => {
+      const div = document.createElement('div');
+      div.className = 'chat-msg';
+      if (msg.startsWith('[SİSTEM]')) {
+        div.classList.add('system-msg');
+      }
+      div.textContent = msg;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    function startBot() {
+      const host = document.getElementById('host').value;
+      const port = document.getElementById('port').value;
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const autoSkyblock = document.getElementById('autoSkyblock').checked;
+      const autoReconnect = document.getElementById('autoReconnect').checked;
+
+      socket.emit('startBot', { host, port, username, password, autoSkyblock, autoReconnect });
+    }
+
+    function reconnectBot() {
+      socket.emit('reconnectBot');
+    }
+
+    function sendCmd(cmd) {
+      socket.emit('sendCmd', cmd);
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('message');
+      if (input.value.trim() !== '') {
+        socket.emit('sendMessage', input.value);
         input.value = '';
       }
+    }
+
+    function clearChat() {
+      chatBox.innerHTML = '';
     }
   </script>
 </body>
