@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minecraft AFK Portal - mc4fun</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; transition: all 0.2s ease; }
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background: linear-gradient(135deg, #0f0c20 0%, #1a103c 100%); 
+      color: #e2e8f0; 
+      margin: 0; 
+      padding: 20px; 
+      min-height: 100vh;
+    }
+    .container { 
+      max-width: 900px; 
+      margin: 0 auto; 
+      background: rgba(23, 15, 38, 0.85); 
+      backdrop-filter: blur(12px);
+      padding: 25px; 
+      border-radius: 16px; 
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 15px;
+    }
+    h2 { margin: 0; color: #a78bfa; font-weight: 700; font-size: 24px; }
+    .badge {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge-online { background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid #34d399; }
+    .badge-offline { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid #f87171; }
+    .badge-connecting { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid #fbbf24; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+    .status-monitor {
+      display: flex;
+      gap: 15px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 12px 18px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 13px;
+      flex-wrap: wrap;
+    }
+    .stat-item { display: flex; align-items: center; gap: 6px; }
+    .stat-val { font-weight: 700; color: #38bdf8; }
+
+    .input-field { display: flex; flex-direction: column; gap: 4px; }
+    .input-field field-title { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+
+    .config-panel { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+      gap: 12px; 
+      margin-bottom: 20px; 
+      background: rgba(255, 255, 255, 0.03); 
+      padding: 18px; 
+      border-radius: 12px; 
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    input[type="text"], input[type="password"], select { 
+      padding: 10px 14px; 
+      border-radius: 8px; 
+      border: 1px solid rgba(255, 255, 255, 0.15); 
+      background: rgba(15, 12, 32, 0.6); 
+      color: #fff; 
+      font-size: 14px;
+      outline: none;
+      width: 100%;
+    }
+    input:focus, select:focus { border-color: #a78bfa; box-shadow: 0 0 10px rgba(167, 139, 250, 0.3); }
+    
+    .checkbox-group {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    label { font-size: 13px; color: #cbd5e1; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    
+    .btn-group { grid-column: 1 / -1; display: flex; gap: 10px; margin-top: 5px; }
+    button { 
+      padding: 12px 18px; 
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-connect { background: #8b5cf6; color: #fff; flex: 2; }
+    .btn-connect:hover { background: #7c3aed; }
+    .btn-reconnect { background: #f59e0b; color: #fff; flex: 1; }
+    .btn-reconnect:hover { background: #d97706; }
+
+    .quick-cmds {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .quick-title { font-size: 12px; color: #94a3b8; font-weight: 600; margin-right: 5px; }
+    .btn-cmd {
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      padding: 8px 14px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .btn-cmd:hover { background: #a78bfa; color: #fff; }
+    .btn-login { background: #3b82f6; color: #fff; font-weight: 700; }
+    .btn-login:hover { background: #2563eb; }
+    .btn-skyblock { background: #10b981; color: #fff; font-weight: 700; }
+    .btn-skyblock:hover { background: #059669; }
+
+    /* GUI / Sandık Tasarımı */
+    .gui-box {
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid #a78bfa;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .gui-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .gui-title { font-weight: 700; color: #fbbf24; font-size: 16px; }
+    .btn-close-gui { background: #ef4444; color: #fff; padding: 4px 10px; font-size: 12px; }
+    
+    .chest-grid {
+      display: grid;
+      grid-template-columns: repeat(9, minmax(36px, 44px));
+      gap: 4px;
+      justify-content: center;
+      background: #8b8b8b;
+      padding: 8px;
+      border-radius: 8px;
+      border: 3px solid #373737;
+    }
+    .slot {
+      width: 100%;
+      aspect-ratio: 1;
+      background: #c6c6c6;
+      border: 2px solid #373737;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+    }
+    .slot:hover { background: #fff; border-color: #a78bfa; }
+    .slot img { width: 28px; height: 28px; image-rendering: pixelated; pointer-events: none; }
+    .slot-count {
+      position: absolute;
+      bottom: 1px;
+      right: 3px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    /* Minecraft Tooltip Stili */
+    .mc-tooltip {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      background: rgba(16, 0, 16, 0.95);
+      border: 2px solid #280068;
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 12px;
+      pointer-events: none;
+      box-shadow: 0 0 12px rgba(0,0,0,0.8);
+      max-width: 280px;
+      line-height: 1.4;
+    }
+
+    .chat-container { position: relative; }
+    #chat-box { 
+      height: 350px; 
+      overflow-y: auto; 
+      background: #090613; 
+      border: 1px solid rgba(255, 255, 255, 0.1); 
+      padding: 15px; 
+      border-radius: 12px; 
+      margin-bottom: 12px; 
+      font-family: 'Fira Code', monospace; 
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .chat-msg { margin-bottom: 4px; word-break: break-word; }
+    .system-msg { color: #38bdf8; font-weight: 600; }
+    .clear-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: rgba(255,255,255,0.1);
+      color: #94a3b8;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .clear-btn:hover { background: #ef4444; color: #fff; }
+
+    .input-group { display: flex; gap: 10px; }
+    .input-group input { flex: 1; }
+    .btn-send { background: #a78bfa; color: #fff; padding: 0 24px; }
+    .btn-send:hover { background: #8b5cf6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>🎮 Minecraft AFK Portal</h2>
+      <div id="statusBadge" class="badge badge-offline">
+        <span class="dot"></span> <span id="statusText">Çevrimdışı</span>
+      </div>
+    </div>
+
+    <div class="status-monitor">
+      <div class="stat-item">❤️ Can: <span id="statHealth" class="stat-val">-</span></div>
+      <div class="stat-item">🍗 Açlık: <span id="statFood" class="stat-val">-</span></div>
+      <div class="stat-item">📍 Konum (X, Y, Z): <span id="statPos" class="stat-val">- / - / -</span></div>
+    </div>
+    
+    <div class="config-panel">
+      <div class="input-field">
+        <field-title>Sunucu Adresi</field-title>
+        <input type="text" id="host" value="play.mc4fun.net" placeholder="Örn: play.mc4fun.net">
+      </div>
+      <div class="input-field">
+        <field-title>Port</field-title>
+        <input type="text" id="port" value="25565" placeholder="25565">
+      </div>
+      <div class="input-field">
+        <field-title>Kullanıcı Adı (İsim)</field-title>
+        <input type="text" id="username" value="nusretyasir" placeholder="İstediğiniz İsim">
+      </div>
+      <div class="input-field">
+        <field-title>Giriş Şifresi (/login)</field-title>
+        <input type="password" id="password" value="" placeholder="Şifreniz">
+      </div>
+      <div class="input-field">
+        <field-title>Komut Gecikmesi</field-title>
+        <select id="cmdDelay">
+          <option value="2000">2 Saniye Gecikme</option>
+          <option value="3000" selected>3 Saniye Gecikme (Önerilen)</option>
+          <option value="5000">5 Saniye Gecikme</option>
+        </select>
+      </div>
+      
+      <div class="checkbox-group">
+        <label>
+          <input type="checkbox" id="autoSkyblock"> Otomatik Skyblock'a Geç (/skyblock)
+        </label>
+        <label>
+          <input type="checkbox" id="autoReconnect" checked> Kopunca Otomatik Bağlan (10sn)
+        </label>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn-connect" onclick="startBot()">⚡ Sunucuya Bağlan / Başlat</button>
+        <button class="btn-reconnect" onclick="reconnectBot()">🔄 Yeniden Bağlan</button>
+      </div>
+    </div>
+
+    <div class="quick-cmds">
+      <span class="quick-title">Hızlı İşlemler:</span>
+      <button class="btn-cmd btn-login" onclick="sendLogin()">🔑 Giriş Yap (/login)</button>
+      <button class="btn-cmd btn-skyblock" onclick="sendCmd('/skyblock')">🏝️ /skyblock</button>
+      <button class="btn-cmd" onclick="sendCmd('/shard')">💎 /shard</button>
+      <button class="btn-cmd" onclick="sendCmd('/farm')">🌾 /farm</button>
+      <button class="btn-cmd" onclick="sendCmd('/is')">🏠 /is (Ada)</button>
+      <button class="btn-cmd" onclick="sendCmd('/afk')">💤 /afk</button>
+      <button class="btn-cmd" onclick="sendCmd('/spawn')">📍 /spawn</button>
+      <button class="btn-cmd" onclick="sendCmd('/ping')">📶 /ping</button>
+    </div>
+
+    <!-- Sandık / GUI Arayüzü -->
+    <div id="guiBox" class="gui-box">
+      <div class="gui-header">
+        <span id="guiTitle" class="gui-title">Açılan Menü</span>
+        <button class="btn-close-gui" onclick="closeGui()">Kapat ✕</button>
+      </div>
+      <div id="chestGrid" class="chest-grid"></div>
+    </div>
+
+    <div class="chat-container">
+      <button class="clear-btn" onclick="clearChat()">Sohbeti Temizle</button>
+      <div id="chat-box"></div>
+    </div>
+
+    <div class="input-group">
+      <input type="text" id="message" placeholder="Sohbete mesaj yazın veya komut girin..." onkeydown="handleKeyDown(event)">
+      <button type="button" class="btn-send" id="sendBtn" onclick="sendMessage()">Gönder</button>
+    </div>
+  </div>
+
+  <div id="mcTooltip" class="mc-tooltip"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const chatBox = document.getElementById('chat-box');
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const guiBox = document.getElementById('guiBox');
+    const guiTitle = document.getElementById('guiTitle');
+    const chestGrid = document.getElementById('chestGrid');
+    const mcTooltip = document.getElementById('mcTooltip');
+
+    socket.on('status', (status) => {
+      if (status === 'online') {
+        statusBadge.className = 'badge badge-online';
+        statusText.innerText = 'Çevrimiçi (Oyunda)';
+      } else if (status === 'connecting') {
+        statusBadge.className = 'badge badge-connecting';
+        statusText.innerText = 'Bağlanılıyor...';
+      } else {
+        statusBadge.className = 'badge badge-offline';
+        statusText.innerText = 'Çevrimdışı';
+        document.getElementById('statHealth').innerText = '-';
+        document.getElementById('statFood').innerText = '-';
+        document.getElementById('statPos').innerText = '- / - / -';
+        guiBox.style.display = 'none';
+      }
+    });
+
+    socket.on('statsUpdate', (stats) => {
+      document.getElementById('statHealth').innerText = stats.health + ' / 20';
+      document.getElementById('statFood').innerText = stats.food + ' / 20';
+      document.getElementById('statPos').innerText = `${stats.pos.x}, ${stats.pos.y}, ${stats.pos.z}`;
+    });
+
+    // Menü / Sandık Açıldığında
+    socket.on('openWindow', (gui) => {
+      guiTitle.innerText = gui.title || 'Açılan Menü';
+      chestGrid.innerHTML = '';
+      guiBox.style.display = 'block';
+
+      gui.slots.forEach((item) => {
+        const slotEl = document.createElement('div');
+        slotEl.className = 'slot';
+
+        if (!item.empty && item.name) {
+          const imgUrl = `https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.19/assets/minecraft/textures/item/${item.name}.png`;
+          
+          slotEl.innerHTML = `
+            <img src="${imgUrl}" onerror="this.src='https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.19/assets/minecraft/textures/block/${item.name}.png'">
+            ${item.count > 1 ? `<span class="slot-count">${item.count}</span>` : ''}
+          `;
+
+          // Fare İpucu (Tooltip)
+          slotEl.onmousemove = (e) => {
+            let html = `<b style="color:#fbbf24">${item.displayName}</b>`;
+            if (item.lore && item.lore.length > 0) {
+              html += `<br><span style="color:#cbd5e1">${item.lore.join('<br>')}</span>`;
+            }
+            mcTooltip.innerHTML = html;
+            mcTooltip.style.display = 'block';
+            mcTooltip.style.left = (e.clientX + 14) + 'px';
+            mcTooltip.style.top = (e.clientY + 14) + 'px';
+          };
+
+          slotEl.onmouseleave = () => {
+            mcTooltip.style.display = 'none';
+          };
+        }
+
+        // Slot Tıklama
+        slotEl.onclick = () => {
+          socket.emit('clickSlot', item.slot);
+        };
+
+        chestGrid.appendChild(slotEl);
+      });
+    });
+
+    socket.on('closeWindow', () => {
+      guiBox.style.display = 'none';
+      mcTooltip.style.display = 'none';
+    });
+
+    socket.on('chat', (msg) => {
+      const div = document.createElement('div');
+      div.className = 'chat-msg';
+      if (typeof msg === 'string' && msg.startsWith('[SİSTEM]')) {
+        div.classList.add('system-msg');
+      }
+      div.textContent = msg;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    function closeGui() {
+      guiBox.style.display = 'none';
+      mcTooltip.style.display = 'none';
+      socket.emit('closeCurrentWindow');
+    }
+
+    function startBot() {
+      const host = document.getElementById('host').value;
+      const port = document.getElementById('port').value;
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const autoSkyblock = document.getElementById('autoSkyblock').checked;
+      const autoReconnect = document.getElementById('autoReconnect').checked;
+      const cmdDelay = document.getElementById('cmdDelay').value;
+
+      socket.emit('startBot', { host, port, username, password, autoSkyblock, autoReconnect, cmdDelay });
+    }
+
+    function reconnectBot() {
+      socket.emit('reconnectBot');
+    }
+
+    function sendLogin() {
+      const password = document.getElementById('password').value;
+      socket.emit('sendLogin', password);
+    }
+
+    function sendCmd(cmd) {
+      socket.emit('sendCmd', cmd);
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('message');
+      if (!input) return;
+      const text = input.value.trim();
+      if (text !== '') {
+        socket.emit('sendMessage', text);
+        input.value = '';
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        sendMessage();
+      }
+    }
+
+    function clearChat() {
+      chatBox.innerHTML = '';
+    }
+  </script>
+</body>
+</html>
