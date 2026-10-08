@@ -14,11 +14,10 @@ let botOptions = {
   host: 'play.mc4fun.net',
   port: 25565,
   username: 'nusretyasir',
-  password: '2013',
-  autoLogin: true,
-  autoSkyblock: true,
+  password: '',
+  autoSkyblock: false,
   autoReconnect: true,
-  cmdDelay: 3000 // Komutlar arası bekleme süresi (milisaniye)
+  cmdDelay: 3000
 };
 
 let reconnectTimeout = null;
@@ -52,7 +51,7 @@ function createBot() {
   cleanupBot();
 
   io.emit('status', 'connecting');
-  io.emit('chat', '[SİSTEM] Sunucuya bağlanılıyor...');
+  io.emit('chat', `[SİSTEM] ${botOptions.username} adıyla sunucuya bağlanılıyor...`);
 
   bot = mineflayer.createBot({
     host: botOptions.host,
@@ -61,36 +60,21 @@ function createBot() {
     version: false
   });
 
-  // Can ve pozisyon değiştikçe arayüze güncel bilgi gönder
   bot.on('health', sendStats);
   bot.on('move', sendStats);
 
   bot.on('spawn', () => {
     io.emit('status', 'online');
-    io.emit('chat', `[SİSTEM] Bot başarıyla ${botOptions.host} sunucusuna girdi!`);
+    io.emit('chat', `[SİSTEM] Bot (${botOptions.username}) başarıyla ${botOptions.host} sunucusuna girdi!`);
     sendStats();
 
-    let delay = botOptions.cmdDelay || 3000;
-
-    // 1. Adım: İsteğe bağlı Otomatik /login
-    if (botOptions.autoLogin && botOptions.password && botOptions.password.trim() !== '') {
-      setTimeout(() => {
-        if (bot) {
-          bot.chat(`/login ${botOptions.password}`);
-          io.emit('chat', '[SİSTEM] Otomatik /login gönderildi.');
-        }
-      }, delay);
-    }
-
-    // 2. Adım: İsteğe bağlı Otomatik /skyblock (Login'den sonraki gecikmeyle)
     if (botOptions.autoSkyblock) {
-      let skyblockDelay = botOptions.autoLogin ? delay * 2 : delay;
       setTimeout(() => {
         if (bot) {
           bot.chat('/skyblock');
-          io.emit('chat', '[SİSTEM] Otomatik /skyblock komutu gönderildi.');
+          io.emit('chat', '[SİZ]: /skyblock');
         }
-      }, skyblockDelay);
+      }, botOptions.cmdDelay || 3000);
     }
   });
 
@@ -142,12 +126,11 @@ io.on('connection', (socket) => {
   sendStats();
 
   socket.on('startBot', (data) => {
-    botOptions.host = data.host || botOptions.host;
+    botOptions.host = data.host || 'play.mc4fun.net';
     botOptions.port = parseInt(data.port) || 25565;
-    botOptions.username = data.username || botOptions.username;
-    botOptions.password = data.password || '2013';
-    botOptions.autoLogin = data.autoLogin !== undefined ? data.autoLogin : true;
-    botOptions.autoSkyblock = data.autoSkyblock !== undefined ? data.autoSkyblock : true;
+    botOptions.username = data.username && data.username.trim() !== '' ? data.username.trim() : 'nusretyasir';
+    botOptions.password = data.password || '';
+    botOptions.autoSkyblock = data.autoSkyblock !== undefined ? data.autoSkyblock : false;
     botOptions.autoReconnect = data.autoReconnect !== undefined ? data.autoReconnect : true;
     botOptions.cmdDelay = parseInt(data.cmdDelay) || 3000;
     
@@ -158,6 +141,20 @@ io.on('connection', (socket) => {
   socket.on('reconnectBot', () => {
     if (reconnectTimeout) clearTimeout(reconnectTimeout);
     createBot();
+  });
+
+  socket.on('sendLogin', (pwd) => {
+    const passToSend = pwd || botOptions.password;
+    if (bot) {
+      if (passToSend && passToSend.trim() !== '') {
+        bot.chat(`/login ${passToSend}`);
+        io.emit('chat', '[SİZ]: /login ********');
+      } else {
+        io.emit('chat', '[SİSTEM] Şifre alanı boş! Lütfen şifre girin.');
+      }
+    } else {
+      io.emit('chat', '[SİSTEM] Bot oyunda değil!');
+    }
   });
 
   socket.on('sendCmd', (cmd) => {

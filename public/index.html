@@ -48,7 +48,6 @@
     .badge-connecting { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid #fbbf24; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 
-    /* Bot Durum Bilgisi Ekranı (Canlı Konum ve Can) */
     .status-monitor {
       display: flex;
       gap: 15px;
@@ -131,6 +130,8 @@
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
     .btn-cmd:hover { background: #a78bfa; color: #fff; }
+    .btn-login { background: #3b82f6; color: #fff; font-weight: 700; }
+    .btn-login:hover { background: #2563eb; }
     .btn-skyblock { background: #10b981; color: #fff; font-weight: 700; }
     .btn-skyblock:hover { background: #059669; }
 
@@ -177,7 +178,6 @@
       </div>
     </div>
 
-    <!-- Canlı Konum ve Can Ekranı -->
     <div class="status-monitor">
       <div class="stat-item">❤️ Can: <span id="statHealth" class="stat-val">-</span></div>
       <div class="stat-item">🍗 Açlık: <span id="statFood" class="stat-val">-</span></div>
@@ -194,12 +194,12 @@
         <input type="text" id="port" value="25565" placeholder="25565">
       </div>
       <div class="input-field">
-        <field-title>Kullanıcı Adı</field-title>
-        <input type="text" id="username" value="nusretyasir" placeholder="Oyundaki İsim">
+        <field-title>Kullanıcı Adı (İsim)</field-title>
+        <input type="text" id="username" value="nusretyasir" placeholder="İstediğiniz İsim">
       </div>
       <div class="input-field">
         <field-title>Giriş Şifresi (/login)</field-title>
-        <input type="password" id="password" value="2013" placeholder="Şifreniz">
+        <input type="password" id="password" value="" placeholder="Şifreniz">
       </div>
       <div class="input-field">
         <field-title>Komut Gecikmesi</field-title>
@@ -212,10 +212,7 @@
       
       <div class="checkbox-group">
         <label>
-          <input type="checkbox" id="autoLogin" checked> Otomatik Giriş Yap (/login)
-        </label>
-        <label>
-          <input type="checkbox" id="autoSkyblock" checked> Otomatik Skyblock'a Geç (/skyblock)
+          <input type="checkbox" id="autoSkyblock"> Otomatik Skyblock'a Geç (/skyblock)
         </label>
         <label>
           <input type="checkbox" id="autoReconnect" checked> Kopunca Otomatik Bağlan (10sn)
@@ -229,7 +226,8 @@
     </div>
 
     <div class="quick-cmds">
-      <span class="quick-title">Hızlı Komutlar:</span>
+      <span class="quick-title">Hızlı İşlemler:</span>
+      <button class="btn-cmd btn-login" onclick="sendLogin()">🔑 Giriş Yap (/login)</button>
       <button class="btn-cmd btn-skyblock" onclick="sendCmd('/skyblock')">🏝️ /skyblock</button>
       <button class="btn-cmd" onclick="sendCmd('/is')">🏠 /is (Ada)</button>
       <button class="btn-cmd" onclick="sendCmd('/afk')">💤 /afk</button>
@@ -244,7 +242,7 @@
 
     <div class="input-group">
       <input type="text" id="message" placeholder="Sohbete mesaj yazın veya komut girin..." onkeydown="handleKeyDown(event)">
-      <button class="btn-send" onclick="sendMessage()">Gönder</button>
+      <button type="button" class="btn-send" id="sendBtn" onclick="sendMessage()">Gönder</button>
     </div>
   </div>
 
@@ -293,16 +291,20 @@
       const port = document.getElementById('port').value;
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
-      const autoLogin = document.getElementById('autoLogin').checked;
       const autoSkyblock = document.getElementById('autoSkyblock').checked;
       const autoReconnect = document.getElementById('autoReconnect').checked;
       const cmdDelay = document.getElementById('cmdDelay').value;
 
-      socket.emit('startBot', { host, port, username, password, autoLogin, autoSkyblock, autoReconnect, cmdDelay });
+      socket.emit('startBot', { host, port, username, password, autoSkyblock, autoReconnect, cmdDelay });
     }
 
     function reconnectBot() {
       socket.emit('reconnectBot');
+    }
+
+    function sendLogin() {
+      const password = document.getElementById('password').value;
+      socket.emit('sendLogin', password);
     }
 
     function sendCmd(cmd) {
@@ -311,6 +313,7 @@
 
     function sendMessage() {
       const input = document.getElementById('message');
+      if (!input) return;
       const text = input.value.trim();
       if (text !== '') {
         socket.emit('sendMessage', text);
