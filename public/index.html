@@ -47,25 +47,28 @@
     .badge-offline { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid #f87171; }
     .badge-connecting { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid #fbbf24; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-    
-    .guide-card {
-      background: rgba(167, 139, 250, 0.08);
-      border: 1px dashed rgba(167, 139, 250, 0.3);
+
+    /* Bot Durum Bilgisi Ekranı (Canlı Konum ve Can) */
+    .status-monitor {
+      display: flex;
+      gap: 15px;
+      background: rgba(0, 0, 0, 0.3);
       padding: 12px 18px;
       border-radius: 10px;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       font-size: 13px;
-      line-height: 1.5;
-      color: #cbd5e1;
+      flex-wrap: wrap;
     }
-    .guide-card b { color: #a78bfa; }
+    .stat-item { display: flex; align-items: center; gap: 6px; }
+    .stat-val { font-weight: 700; color: #38bdf8; }
 
     .input-field { display: flex; flex-direction: column; gap: 4px; }
     .input-field field-title { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
 
     .config-panel { 
       display: grid; 
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
       gap: 12px; 
       margin-bottom: 20px; 
       background: rgba(255, 255, 255, 0.03); 
@@ -73,7 +76,7 @@
       border-radius: 12px; 
       border: 1px solid rgba(255,255,255,0.05);
     }
-    input[type="text"], input[type="password"] { 
+    input[type="text"], input[type="password"], select { 
       padding: 10px 14px; 
       border-radius: 8px; 
       border: 1px solid rgba(255, 255, 255, 0.15); 
@@ -83,7 +86,7 @@
       outline: none;
       width: 100%;
     }
-    input:focus { border-color: #a78bfa; box-shadow: 0 0 10px rgba(167, 139, 250, 0.3); }
+    input:focus, select:focus { border-color: #a78bfa; box-shadow: 0 0 10px rgba(167, 139, 250, 0.3); }
     
     .checkbox-group {
       grid-column: 1 / -1;
@@ -174,8 +177,11 @@
       </div>
     </div>
 
-    <div class="guide-card">
-      💡 <b>Nasıl Kullanılır?</b> <b>"⚡ Sunucuya Bağlan"</b> butonuna basın. Bot otomatik bağlanacak, oyuna girecek ve Skyblock adanıza geçecektir.
+    <!-- Canlı Konum ve Can Ekranı -->
+    <div class="status-monitor">
+      <div class="stat-item">❤️ Can: <span id="statHealth" class="stat-val">-</span></div>
+      <div class="stat-item">🍗 Açlık: <span id="statFood" class="stat-val">-</span></div>
+      <div class="stat-item">📍 Konum (X, Y, Z): <span id="statPos" class="stat-val">- / - / -</span></div>
     </div>
     
     <div class="config-panel">
@@ -188,20 +194,31 @@
         <input type="text" id="port" value="25565" placeholder="25565">
       </div>
       <div class="input-field">
-        <field-title>Minecraft Kullanıcı Adı</field-title>
+        <field-title>Kullanıcı Adı</field-title>
         <input type="text" id="username" value="nusretyasir" placeholder="Oyundaki İsim">
       </div>
       <div class="input-field">
         <field-title>Giriş Şifresi (/login)</field-title>
         <input type="password" id="password" value="2013" placeholder="Şifreniz">
       </div>
+      <div class="input-field">
+        <field-title>Komut Gecikmesi</field-title>
+        <select id="cmdDelay">
+          <option value="2000">2 Saniye Gecikme</option>
+          <option value="3000" selected>3 Saniye Gecikme (Önerilen)</option>
+          <option value="5000">5 Saniye Gecikme</option>
+        </select>
+      </div>
       
       <div class="checkbox-group">
+        <label>
+          <input type="checkbox" id="autoLogin" checked> Otomatik Giriş Yap (/login)
+        </label>
         <label>
           <input type="checkbox" id="autoSkyblock" checked> Otomatik Skyblock'a Geç (/skyblock)
         </label>
         <label>
-          <input type="checkbox" id="autoReconnect" checked> Kopunca Otomatik Tekrar Bağlan (10sn)
+          <input type="checkbox" id="autoReconnect" checked> Kopunca Otomatik Bağlan (10sn)
         </label>
       </div>
 
@@ -226,7 +243,7 @@
     </div>
 
     <div class="input-group">
-      <input type="text" id="message" placeholder="Sohbete mesaj yazın veya komut girin (/is, /msg vb)..." onkeypress="if(event.key==='Enter') sendMessage()">
+      <input type="text" id="message" placeholder="Sohbete mesaj yazın veya komut girin..." onkeydown="handleKeyDown(event)">
       <button class="btn-send" onclick="sendMessage()">Gönder</button>
     </div>
   </div>
@@ -248,13 +265,22 @@
       } else {
         statusBadge.className = 'badge badge-offline';
         statusText.innerText = 'Çevrimdışı';
+        document.getElementById('statHealth').innerText = '-';
+        document.getElementById('statFood').innerText = '-';
+        document.getElementById('statPos').innerText = '- / - / -';
       }
+    });
+
+    socket.on('statsUpdate', (stats) => {
+      document.getElementById('statHealth').innerText = stats.health + ' / 20';
+      document.getElementById('statFood').innerText = stats.food + ' / 20';
+      document.getElementById('statPos').innerText = `${stats.pos.x}, ${stats.pos.y}, ${stats.pos.z}`;
     });
 
     socket.on('chat', (msg) => {
       const div = document.createElement('div');
       div.className = 'chat-msg';
-      if (msg.startsWith('[SİSTEM]')) {
+      if (typeof msg === 'string' && msg.startsWith('[SİSTEM]')) {
         div.classList.add('system-msg');
       }
       div.textContent = msg;
@@ -267,10 +293,12 @@
       const port = document.getElementById('port').value;
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
+      const autoLogin = document.getElementById('autoLogin').checked;
       const autoSkyblock = document.getElementById('autoSkyblock').checked;
       const autoReconnect = document.getElementById('autoReconnect').checked;
+      const cmdDelay = document.getElementById('cmdDelay').value;
 
-      socket.emit('startBot', { host, port, username, password, autoSkyblock, autoReconnect });
+      socket.emit('startBot', { host, port, username, password, autoLogin, autoSkyblock, autoReconnect, cmdDelay });
     }
 
     function reconnectBot() {
@@ -283,9 +311,17 @@
 
     function sendMessage() {
       const input = document.getElementById('message');
-      if (input.value.trim() !== '') {
-        socket.emit('sendMessage', input.value);
+      const text = input.value.trim();
+      if (text !== '') {
+        socket.emit('sendMessage', text);
         input.value = '';
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        sendMessage();
       }
     }
 
