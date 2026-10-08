@@ -135,6 +135,74 @@
     .btn-skyblock { background: #10b981; color: #fff; font-weight: 700; }
     .btn-skyblock:hover { background: #059669; }
 
+    /* GUI / Sandık Tasarımı */
+    .gui-box {
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid #a78bfa;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .gui-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .gui-title { font-weight: 700; color: #fbbf24; font-size: 16px; }
+    .btn-close-gui { background: #ef4444; color: #fff; padding: 4px 10px; font-size: 12px; }
+    
+    .chest-grid {
+      display: grid;
+      grid-template-columns: repeat(9, minmax(36px, 44px));
+      gap: 4px;
+      justify-content: center;
+      background: #8b8b8b;
+      padding: 8px;
+      border-radius: 8px;
+      border: 3px solid #373737;
+    }
+    .slot {
+      width: 100%;
+      aspect-ratio: 1;
+      background: #c6c6c6;
+      border: 2px solid #373737;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+    }
+    .slot:hover { background: #fff; border-color: #a78bfa; }
+    .slot img { width: 28px; height: 28px; image-rendering: pixelated; pointer-events: none; }
+    .slot-count {
+      position: absolute;
+      bottom: 1px;
+      right: 3px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    /* Minecraft Tooltip Stili */
+    .mc-tooltip {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      background: rgba(16, 0, 16, 0.95);
+      border: 2px solid #280068;
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 12px;
+      pointer-events: none;
+      box-shadow: 0 0 12px rgba(0,0,0,0.8);
+      max-width: 280px;
+      line-height: 1.4;
+    }
+
     .chat-container { position: relative; }
     #chat-box { 
       height: 350px; 
@@ -229,10 +297,21 @@
       <span class="quick-title">Hızlı İşlemler:</span>
       <button class="btn-cmd btn-login" onclick="sendLogin()">🔑 Giriş Yap (/login)</button>
       <button class="btn-cmd btn-skyblock" onclick="sendCmd('/skyblock')">🏝️ /skyblock</button>
+      <button class="btn-cmd" onclick="sendCmd('/shard')">💎 /shard</button>
+      <button class="btn-cmd" onclick="sendCmd('/farm')">🌾 /farm</button>
       <button class="btn-cmd" onclick="sendCmd('/is')">🏠 /is (Ada)</button>
       <button class="btn-cmd" onclick="sendCmd('/afk')">💤 /afk</button>
       <button class="btn-cmd" onclick="sendCmd('/spawn')">📍 /spawn</button>
       <button class="btn-cmd" onclick="sendCmd('/ping')">📶 /ping</button>
+    </div>
+
+    <!-- Sandık / GUI Arayüzü -->
+    <div id="guiBox" class="gui-box">
+      <div class="gui-header">
+        <span id="guiTitle" class="gui-title">Açılan Menü</span>
+        <button class="btn-close-gui" onclick="closeGui()">Kapat ✕</button>
+      </div>
+      <div id="chestGrid" class="chest-grid"></div>
     </div>
 
     <div class="chat-container">
@@ -246,12 +325,18 @@
     </div>
   </div>
 
+  <div id="mcTooltip" class="mc-tooltip"></div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
     const chatBox = document.getElementById('chat-box');
     const statusBadge = document.getElementById('statusBadge');
     const statusText = document.getElementById('statusText');
+    const guiBox = document.getElementById('guiBox');
+    const guiTitle = document.getElementById('guiTitle');
+    const chestGrid = document.getElementById('chestGrid');
+    const mcTooltip = document.getElementById('mcTooltip');
 
     socket.on('status', (status) => {
       if (status === 'online') {
@@ -266,6 +351,7 @@
         document.getElementById('statHealth').innerText = '-';
         document.getElementById('statFood').innerText = '-';
         document.getElementById('statPos').innerText = '- / - / -';
+        guiBox.style.display = 'none';
       }
     });
 
@@ -273,6 +359,55 @@
       document.getElementById('statHealth').innerText = stats.health + ' / 20';
       document.getElementById('statFood').innerText = stats.food + ' / 20';
       document.getElementById('statPos').innerText = `${stats.pos.x}, ${stats.pos.y}, ${stats.pos.z}`;
+    });
+
+    // Menü / Sandık Açıldığında
+    socket.on('openWindow', (gui) => {
+      guiTitle.innerText = gui.title || 'Açılan Menü';
+      chestGrid.innerHTML = '';
+      guiBox.style.display = 'block';
+
+      gui.slots.forEach((item) => {
+        const slotEl = document.createElement('div');
+        slotEl.className = 'slot';
+
+        if (!item.empty && item.name) {
+          const imgUrl = `https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.19/assets/minecraft/textures/item/${item.name}.png`;
+          
+          slotEl.innerHTML = `
+            <img src="${imgUrl}" onerror="this.src='https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.19/assets/minecraft/textures/block/${item.name}.png'">
+            ${item.count > 1 ? `<span class="slot-count">${item.count}</span>` : ''}
+          `;
+
+          // Fare İpucu (Tooltip)
+          slotEl.onmousemove = (e) => {
+            let html = `<b style="color:#fbbf24">${item.displayName}</b>`;
+            if (item.lore && item.lore.length > 0) {
+              html += `<br><span style="color:#cbd5e1">${item.lore.join('<br>')}</span>`;
+            }
+            mcTooltip.innerHTML = html;
+            mcTooltip.style.display = 'block';
+            mcTooltip.style.left = (e.clientX + 14) + 'px';
+            mcTooltip.style.top = (e.clientY + 14) + 'px';
+          };
+
+          slotEl.onmouseleave = () => {
+            mcTooltip.style.display = 'none';
+          };
+        }
+
+        // Slot Tıklama
+        slotEl.onclick = () => {
+          socket.emit('clickSlot', item.slot);
+        };
+
+        chestGrid.appendChild(slotEl);
+      });
+    });
+
+    socket.on('closeWindow', () => {
+      guiBox.style.display = 'none';
+      mcTooltip.style.display = 'none';
     });
 
     socket.on('chat', (msg) => {
@@ -285,6 +420,12 @@
       chatBox.appendChild(div);
       chatBox.scrollTop = chatBox.scrollHeight;
     });
+
+    function closeGui() {
+      guiBox.style.display = 'none';
+      mcTooltip.style.display = 'none';
+      socket.emit('closeCurrentWindow');
+    }
 
     function startBot() {
       const host = document.getElementById('host').value;

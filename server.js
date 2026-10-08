@@ -47,6 +47,54 @@ function sendStats() {
   }
 }
 
+function sendInventory() {
+  if (!bot || !bot.inventory) return;
+  const items = bot.inventory.items().map(item => ({
+    slot: item.slot,
+    name: item.name,
+    count: item.count,
+    displayName: item.displayName
+  }));
+  io.emit('inventoryUpdate', items);
+}
+
+function sendWindowData(window) {
+  if (!window) return;
+  const slots = window.slots.map((item, index) => {
+    if (!item) return { slot: index, empty: true };
+    
+    let lore = [];
+    try {
+      if (item.nbt && item.nbt.value && item.nbt.value.display && item.nbt.value.display.value.Lore) {
+        lore = item.nbt.value.display.value.Lore.value.value;
+      }
+    } catch (e) {}
+
+    return {
+      slot: index,
+      name: item.name,
+      count: item.count,
+      displayName: item.displayName || item.name,
+      lore: lore
+    };
+  });
+
+  let titleText = 'Menü / Sandık';
+  try {
+    if (window.title) {
+      const parsed = typeof window.title === 'string' ? JSON.parse(window.title) : window.title;
+      titleText = parsed.text || parsed.translate || 'Menü';
+    }
+  } catch (e) {
+    titleText = 'Menü';
+  }
+
+  io.emit('openWindow', {
+    title: titleText,
+    slots: slots
+  });
+}
+
 function createBot() {
   cleanupBot();
 
@@ -67,6 +115,7 @@ function createBot() {
     io.emit('status', 'online');
     io.emit('chat', `[SİSTEM] Bot (${botOptions.username}) başarıyla ${botOptions.host} sunucusuna girdi!`);
     sendStats();
+    sendInventory();
 
     if (botOptions.autoSkyblock) {
       setTimeout(() => {
@@ -76,6 +125,13 @@ function createBot() {
         }
       }, botOptions.cmdDelay || 3000);
     }
+  });
+
+  // Envanter güncellendiğinde
+  bot.on('windowOpen', (window) => {
+    sendWindowData(window);
+    window.on('updateSlot', () => sendWindowData(window));
+    window.on('close', () => io.emit('closeWindow'));
   });
 
   bot.on('chat', (username, message) => {
@@ -124,6 +180,7 @@ function handleReconnect() {
 io.on('connection', (socket) => {
   socket.emit('status', (bot && bot.entity) ? 'online' : 'offline');
   sendStats();
+  if (bot) sendInventory();
 
   socket.on('startBot', (data) => {
     botOptions.host = data.host || 'play.mc4fun.net';
@@ -162,7 +219,7 @@ io.on('connection', (socket) => {
       bot.chat(cmd);
       io.emit('chat', `[SİZ]: ${cmd}`);
     } else {
-      io.emit('chat', '[SİSTEM] Bot oyunda değil! Lütfen önce "Sunucuya Bağlan" butonuna basın.');
+      io.emit('chat', '[SİSTEM] Bot oyunda değil!');
     }
   });
 
@@ -171,10 +228,37 @@ io.on('connection', (socket) => {
       bot.chat(msg);
       io.emit('chat', `[SİZ]: ${msg}`);
     } else {
-      io.emit('chat', '[SİSTEM] Bot oyunda değil! Lütfen önce "Sunucuya Bağlan" butonuna basın.');
+      io.emit('chat', '[SİSTEM] Bot oyunda değil!');
+    }
+  });
+
+  // GUI Slot Tıklaması
+  socket.on('clickSlot', (slotIndex) => {
+    if (bot && bot.currentWindow) {
+      try {
+        bot.clickWindow(slotIndex, 0, 0);
+      } catch (e) {
+        console.log('Slot tıklama hatası:', e.message);
+      }
+    }
+  });
+
+  // GUI Menüsünü Kapatma
+  socket.on('closeCurrentWindow', () => {
+    if (bot && bot.currentWindow) {
+      try {
+        bot.closeWindow(bot.currentWindow);
+      } catch (e) {}
     }
   });
 });
+
+// Render Uyanık Tutma (Self-Ping)
+setInterval(() => {
+  if (process.env.RENDER_EXTERNAL_URL) {
+    http.get(process.env.RENDER_EXTERNAL_URL, () => {}).on('error', () => {});
+  }
+}, 10 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
