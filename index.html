@@ -3,269 +3,704 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Minecraft Gelişmiş AFK Portal</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <title>Minecraft AFK Portal - Gelişmiş Çoklu Sekme</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; background: #0f0c20; color: #e2e8f0; margin: 0; padding: 20px; }
-    .container { max-width: 1000px; margin: 0 auto; background: #170f26; padding: 25px; border-radius: 12px; border: 1px solid #332; }
+    * { box-sizing: border-box; transition: all 0.15s ease; }
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background: linear-gradient(135deg, #0f0c20 0%, #1a103c 100%); 
+      color: #e2e8f0; 
+      margin: 0; 
+      padding: 20px; 
+      min-height: 100vh;
+    }
+    .container { 
+      max-width: 950px; 
+      margin: 0 auto; 
+      background: rgba(23, 15, 38, 0.9); 
+      backdrop-filter: blur(12px);
+      padding: 25px; 
+      border-radius: 16px; 
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
     
-    /* Sekmeler */
-    .tabs { display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
-    .tab { background: #2d244a; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap; }
-    .tab.active { background: #8b5cf6; }
-    .tab-add { background: #10b981; }
+    /* Sekme Tasarımı */
+    .tab-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      padding-bottom: 5px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      padding: 10px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .tab-btn.active {
+      background: #8b5cf6;
+      color: #fff;
+      border-color: #a78bfa;
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+    }
+    .tab-btn .close-tab {
+      opacity: 0.6;
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+    .tab-btn .close-tab:hover { opacity: 1; background: rgba(0,0,0,0.3); }
+    .btn-add-tab {
+      background: rgba(52, 211, 153, 0.2);
+      color: #34d399;
+      border: 1px dashed #34d399;
+    }
+    .btn-add-tab:hover { background: rgba(52, 211, 153, 0.3); }
 
-    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-left: 10px; }
-    .online { background: #059669; color: #fff; }
-    .offline { background: #dc2626; color: #fff; }
-    .connecting { background: #d97706; color: #fff; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    h2 { margin: 0; color: #a78bfa; font-weight: 700; font-size: 22px; }
+    .badge {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge-online { background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid #34d399; }
+    .badge-offline { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid #f87171; }
+    .badge-connecting { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid #fbbf24; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 
-    /* Ayarlar */
-    .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; background: #1e1435; padding: 15px; border-radius: 8px; }
-    .input-group label { display: block; font-size: 12px; color: #a78bfa; margin-bottom: 5px; }
-    input, select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #4c1d95; background: #0f0c20; color: #fff; }
-    .btn-row { grid-column: 1 / -1; display: flex; gap: 10px; }
-    button.action-btn { flex: 1; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: #fff; }
-    .btn-start { background: #8b5cf6; } .btn-stop { background: #ef4444; }
+    .status-monitor {
+      display: flex;
+      gap: 20px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 12px 18px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 13px;
+    }
+    .stat-val { font-weight: 700; color: #38bdf8; }
 
-    /* Sohbet ve Komut Tamamlama */
-    .chat-box { height: 350px; overflow-y: auto; background: #090613; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 13px; margin-bottom: 10px; border: 1px solid #332; }
-    .chat-msg { margin-bottom: 4px; word-wrap: break-word; }
-    .msg-system { color: #f59e0b; } .msg-self { color: #34d399; }
+    .config-panel { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); 
+      gap: 12px; 
+      margin-bottom: 20px; 
+      background: rgba(255, 255, 255, 0.03); 
+      padding: 18px; 
+      border-radius: 12px; 
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .input-field { display: flex; flex-direction: column; gap: 4px; }
+    .field-title { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+    input[type="text"], input[type="password"], select { 
+      padding: 10px; 
+      border-radius: 8px; 
+      border: 1px solid rgba(255, 255, 255, 0.15); 
+      background: rgba(15, 12, 32, 0.7); 
+      color: #fff; 
+      font-size: 13px;
+      outline: none;
+      width: 100%;
+    }
+    input:focus, select:focus { border-color: #a78bfa; box-shadow: 0 0 10px rgba(167, 139, 250, 0.3); }
     
-    .chat-input-wrapper { position: relative; display: flex; gap: 10px; }
-    #chatInput { flex: 1; }
-    .btn-send { background: #3b82f6; padding: 0 20px; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-weight: bold; }
+    .checkbox-group {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    label { font-size: 13px; color: #cbd5e1; display: flex; align-items: center; gap: 6px; cursor: pointer; }
     
-    /* Komut Önerme Menüsü */
-    .autocomplete-items { position: absolute; bottom: 100%; left: 0; right: 80px; background: #1e1435; border: 1px solid #4c1d95; border-radius: 6px; z-index: 99; display: none; max-height: 150px; overflow-y: auto; }
-    .autocomplete-items div { padding: 10px; cursor: pointer; border-bottom: 1px solid #2d244a; }
-    .autocomplete-items div:hover { background: #8b5cf6; }
+    .btn-group { grid-column: 1 / -1; display: flex; gap: 10px; margin-top: 5px; }
+    button { 
+      padding: 10px 16px; 
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-connect { background: #8b5cf6; color: #fff; flex: 2; }
+    .btn-connect:hover { background: #7c3aed; }
+    .btn-stop { background: #ef4444; color: #fff; flex: 1; }
+    .btn-stop:hover { background: #dc2626; }
 
-    /* İstatistikler */
-    .stats { display: flex; gap: 15px; margin-bottom: 15px; font-size: 13px; color: #94a3b8; }
-    .stats span { color: #38bdf8; font-weight: bold; }
+    .quick-cmds {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .quick-title { font-size: 12px; color: #94a3b8; font-weight: 600; }
+    .btn-cmd {
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .btn-cmd:hover { background: #a78bfa; color: #fff; }
+    .btn-login { background: #3b82f6; color: #fff; font-weight: 700; }
+    .btn-skyblock { background: #10b981; color: #fff; font-weight: 700; }
+
+    /* Sandık / GUI Menü Tasarımı */
+    .gui-box {
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid #a78bfa;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .gui-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .gui-title { font-weight: 700; color: #fbbf24; font-size: 15px; }
+    .chest-grid {
+      display: grid;
+      grid-template-columns: repeat(9, minmax(34px, 42px));
+      gap: 4px;
+      justify-content: center;
+      background: #8b8b8b;
+      padding: 8px;
+      border-radius: 8px;
+      border: 3px solid #373737;
+    }
+    .slot {
+      width: 100%;
+      aspect-ratio: 1;
+      background: #c6c6c6;
+      border: 2px solid #373737;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+    }
+    .slot:hover { background: #fff; border-color: #a78bfa; }
+    .slot img { width: 26px; height: 26px; image-rendering: pixelated; pointer-events: none; }
+    .slot-count {
+      position: absolute; bottom: 1px; right: 3px; font-size: 10px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000;
+    }
+
+    /* Minecraft Tooltip */
+    .mc-tooltip {
+      display: none; position: fixed; z-index: 9999; background: rgba(16, 0, 16, 0.95);
+      border: 2px solid #280068; border-radius: 6px; padding: 8px 12px; color: #fff; font-size: 12px;
+      pointer-events: none; box-shadow: 0 0 12px rgba(0,0,0,0.8); max-width: 280px; line-height: 1.4;
+    }
+
+    .chat-container { position: relative; }
+    #chat-box { 
+      height: 320px; 
+      overflow-y: auto; 
+      background: #090613; 
+      border: 1px solid rgba(255, 255, 255, 0.1); 
+      padding: 15px; 
+      border-radius: 12px; 
+      margin-bottom: 12px; 
+      font-family: 'Fira Code', monospace; 
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .chat-msg { margin-bottom: 4px; word-break: break-word; }
+    .system-msg { color: #38bdf8; font-weight: 600; }
+    .self-msg { color: #34d399; font-weight: 600; }
+
+    /* Komut Öneri Menüsü */
+    .input-wrapper { position: relative; display: flex; gap: 10px; }
+    .suggestions-popup {
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      right: 100px;
+      background: #170f26;
+      border: 1px solid #a78bfa;
+      border-radius: 8px;
+      max-height: 160px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+      box-shadow: 0 -10px 20px rgba(0,0,0,0.5);
+    }
+    .suggestion-item {
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #e2e8f0;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-family: 'Fira Code', monospace;
+    }
+    .suggestion-item:hover, .suggestion-item.active {
+      background: #8b5cf6;
+      color: #fff;
+    }
+
+    .input-group { display: flex; gap: 10px; flex: 1; }
+    .input-group input { flex: 1; }
+    .btn-send { background: #a78bfa; color: #fff; padding: 0 24px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="tabs" id="tabContainer">
-      <button class="tab tab-add" onclick="addNewBot()">+ Yeni Bot Ekle</button>
-    </div>
+    <div class="tab-bar" id="tabBar"></div>
 
-    <div class="stats">
-      Durum: <span id="uiStatus" class="status-badge offline">Çevrimdışı</span>
-      Can: <span id="uiHealth">-</span>
-      Açlık: <span id="uiFood">-</span>
-      Konum: <span id="uiPos">-</span>
-    </div>
-
-    <div class="config-grid">
-      <div class="input-group">
-        <label>Sunucu IP</label>
-        <input type="text" id="cfgHost" value="play.mc4fun.net" onchange="saveData()">
-      </div>
-      <div class="input-group">
-        <label>Port</label>
-        <input type="text" id="cfgPort" value="25565" onchange="saveData()">
-      </div>
-      <div class="input-group">
-        <label>Kullanıcı Adı</label>
-        <input type="text" id="cfgUsername" placeholder="Bot İsmi" onchange="updateTabName()">
-      </div>
-      <div class="input-group">
-        <label>Şifre (/login)</label>
-        <input type="password" id="cfgPassword" onchange="saveData()">
-      </div>
-      <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
-        <input type="checkbox" id="cfgAutoSkyblock" style="width: auto;" onchange="saveData()">
-        <label style="margin:0;">Oto /skyblock</label>
-      </div>
-      <div class="btn-row">
-        <button class="action-btn btn-start" onclick="startCurrentBot()">▶ Botu Başlat</button>
-        <button class="action-btn btn-stop" onclick="stopCurrentBot()">⏹ Durdur</button>
-        <button class="action-btn btn-start" style="background:#2563eb;" onclick="loginCurrentBot()">🔑 Giriş Yap (/login)</button>
+    <div class="header">
+      <h2>🎮 Minecraft AFK Portal</h2>
+      <div id="statusBadge" class="badge badge-offline">
+        <span class="dot"></span> <span id="statusText">Çevrimdışı</span>
       </div>
     </div>
 
-    <div class="chat-box" id="chatBox"></div>
+    <div class="status-monitor">
+      <div>❤️ Can: <span id="statHealth" class="stat-val">-</span></div>
+      <div>🍗 Açlık: <span id="statFood" class="stat-val">-</span></div>
+      <div>📍 Konum: <span id="statPos" class="stat-val">- / - / -</span></div>
+    </div>
+    
+    <div class="config-panel">
+      <div class="input-field">
+        <span class="field-title">Sunucu Adresi</span>
+        <input type="text" id="host" placeholder="play.mc4fun.net" onchange="updateActiveTabData()">
+      </div>
+      <div class="input-field">
+        <span class="field-title">Port</span>
+        <input type="text" id="port" placeholder="25565" onchange="updateActiveTabData()">
+      </div>
+      <div class="input-field">
+        <span class="field-title">Kullanıcı Adı (Bot)</span>
+        <input type="text" id="username" placeholder="Bot İsmi" onchange="updateActiveTabData()">
+      </div>
+      <div class="input-field">
+        <span class="field-title">Giriş Şifresi (/login)</span>
+        <input type="password" id="password" placeholder="Şifreniz" onchange="updateActiveTabData()">
+      </div>
+      <div class="input-field">
+        <span class="field-title">Oto Komut Gecikmesi</span>
+        <select id="cmdDelay" onchange="updateActiveTabData()">
+          <option value="2000">2 Saniye</option>
+          <option value="3000" selected>3 Saniye (Önerilen)</option>
+          <option value="5000">5 Saniye</option>
+        </select>
+      </div>
+      
+      <div class="checkbox-group">
+        <label>
+          <input type="checkbox" id="autoSkyblock" onchange="updateActiveTabData()"> Otomatik Skyblock'a Geç (/skyblock)
+        </label>
+        <label>
+          <input type="checkbox" id="autoReconnect" checked onchange="updateActiveTabData()"> Otomatik Bağlan (Kopunca)
+        </label>
+      </div>
 
-    <div class="chat-input-wrapper">
-      <div id="autocompleteList" class="autocomplete-items"></div>
-      <input type="text" id="chatInput" placeholder="Mesaj veya komut yazın (örn: /is)" onkeyup="handleChatInput(event)">
-      <button class="btn-send" onclick="sendChat()">Gönder</button>
+      <div class="btn-group">
+        <button class="btn-connect" onclick="startBot()">⚡ Sunucuya Bağlan / Başlat</button>
+        <button class="btn-stop" onclick="stopBot()">🛑 Botu Durdur</button>
+      </div>
+    </div>
+
+    <div class="quick-cmds">
+      <span class="quick-title">Hızlı Komutlar:</span>
+      <button class="btn-cmd btn-login" onclick="sendLogin()">🔑 Giriş Yap (/login)</button>
+      <button class="btn-cmd btn-skyblock" onclick="sendCmd('/skyblock')">🏝️ /skyblock</button>
+      <button class="btn-cmd" onclick="sendCmd('/shard')">💎 /shard</button>
+      <button class="btn-cmd" onclick="sendCmd('/farm')">🌾 /farm</button>
+      <button class="btn-cmd" onclick="sendCmd('/is')">🏠 /is (Ada)</button>
+      <button class="btn-cmd" onclick="sendCmd('/afk')">💤 /afk</button>
+      <button class="btn-cmd" onclick="sendCmd('/spawn')">📍 /spawn</button>
+      <button class="btn-cmd" onclick="sendCmd('/ping')">📶 /ping</button>
+    </div>
+
+    <!-- Sandık / GUI Arayüzü -->
+    <div id="guiBox" class="gui-box">
+      <div class="gui-header">
+        <span id="guiTitle" class="gui-title">Açılan Menü</span>
+        <button style="background:#ef4444; color:#fff; padding:4px 10px; font-size:12px;" onclick="closeGui()">Kapat ✕</button>
+      </div>
+      <div id="chestGrid" class="chest-grid"></div>
+    </div>
+
+    <div class="chat-container">
+      <div id="chat-box"></div>
+    </div>
+
+    <div class="input-wrapper">
+      <div id="suggestionsPopup" class="suggestions-popup"></div>
+      <input type="text" id="messageInput" placeholder="Mesaj veya komut yazın (Örn: /is, /login)..." autocomplete="off" oninput="handleInput()" onkeydown="handleKeyDown(event)">
+      <button type="button" class="btn-send" onclick="sendMessage()">Gönder</button>
     </div>
   </div>
+
+  <div id="mcTooltip" class="mc-tooltip"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-    let botsData = JSON.parse(localStorage.getItem('mcBotsData')) || [{ id: 1, name: 'Bot 1', host: 'play.mc4fun.net', port: '25565', username: '', password: '', autoSky: true }];
-    let activeBotIndex = 0;
-    
-    // Önerilecek komutlar listesi
-    const commandList = ['/login', '/skyblock', '/is', '/is go', '/farm', '/shard', '/afk', '/spawn', '/ping', '/tpa', '/tpaccept', '/msg'];
 
-    function saveData() {
-      const active = botsData[activeBotIndex];
-      active.host = document.getElementById('cfgHost').value;
-      active.port = document.getElementById('cfgPort').value;
-      active.username = document.getElementById('cfgUsername').value;
-      active.password = document.getElementById('cfgPassword').value;
-      active.autoSky = document.getElementById('cfgAutoSkyblock').checked;
-      localStorage.setItem('mcBotsData', JSON.stringify(botsData));
+    // Yaygın sunucu komutları listesi
+    const commonCommands = [
+      '/login', '/register', '/skyblock', '/is', '/is home', '/is go', 
+      '/farm', '/shard', '/afk', '/spawn', '/ping', '/tpa', '/tpaccept', 
+      '/pay', '/sell', '/ah', '/kit', '/menu', '/warp'
+    ];
+
+    // Kayıtlı Botlar (LocalStorage)
+    let botTabs = JSON.parse(localStorage.getItem('mc_afk_bots')) || [
+      { id: 1, host: 'play.mc4fun.net', port: '25565', username: 'nusretyasir', password: '', autoSkyblock: false, autoReconnect: true, cmdDelay: '3000' }
+    ];
+    let activeTabIndex = 0;
+    let selectedSuggestionIndex = -1;
+
+    function saveTabsToStorage() {
+      localStorage.setItem('mc_afk_bots', JSON.stringify(botTabs));
     }
 
     function renderTabs() {
-      const container = document.getElementById('tabContainer');
-      container.innerHTML = '';
-      botsData.forEach((bot, index) => {
+      const bar = document.getElementById('tabBar');
+      bar.innerHTML = '';
+
+      botTabs.forEach((bot, index) => {
         const btn = document.createElement('button');
-        btn.className = `tab ${index === activeBotIndex ? 'active' : ''}`;
-        btn.innerText = bot.username || bot.name;
+        btn.className = `tab-btn ${index === activeTabIndex ? 'active' : ''}`;
+        btn.innerHTML = `
+          <span>🤖 ${bot.username || 'Yeni Bot'}</span>
+          ${botTabs.length > 1 ? `<span class="close-tab" onclick="deleteTab(event, ${index})">✕</span>` : ''}
+        `;
         btn.onclick = () => switchTab(index);
-        container.appendChild(btn);
+        bar.appendChild(btn);
       });
+
       const addBtn = document.createElement('button');
-      addBtn.className = 'tab tab-add';
-      addBtn.innerText = '+ Yeni Sekme';
-      addBtn.onclick = addNewBot;
-      container.appendChild(addBtn);
+      addBtn.className = 'tab-btn btn-add-tab';
+      addBtn.innerHTML = '+ Yeni Bot Sekmesi';
+      addBtn.onclick = addNewTab;
+      bar.appendChild(addBtn);
     }
 
     function switchTab(index) {
-      activeBotIndex = index;
-      const bot = botsData[index];
-      document.getElementById('cfgHost').value = bot.host || 'play.mc4fun.net';
-      document.getElementById('cfgPort').value = bot.port || '25565';
-      document.getElementById('cfgUsername').value = bot.username || '';
-      document.getElementById('cfgPassword').value = bot.password || '';
-      document.getElementById('cfgAutoSkyblock').checked = bot.autoSky || false;
-      document.getElementById('chatBox').innerHTML = ''; // Temizle
+      activeTabIndex = index;
+      loadActiveTabFields();
       renderTabs();
+      document.getElementById('chat-box').innerHTML = ''; // Temizle, backend yeni veriyi dolduracak
+      socket.emit('initData'); // Sohbet geçmişi iste
     }
 
-    function updateTabName() {
-      botsData[activeBotIndex].name = document.getElementById('cfgUsername').value || `Bot ${activeBotIndex + 1}`;
-      saveData();
-      renderTabs();
+    function addNewTab() {
+      const newBot = {
+        id: Date.now(),
+        host: 'play.mc4fun.net',
+        port: '25565',
+        username: `Bot_${botTabs.length + 1}`,
+        password: '',
+        autoSkyblock: false,
+        autoReconnect: true,
+        cmdDelay: '3000'
+      };
+      botTabs.push(newBot);
+      saveTabsToStorage();
+      switchTab(botTabs.length - 1);
     }
 
-    function addNewBot() {
-      botsData.push({ id: Date.now(), name: `Bot ${botsData.length + 1}`, host: 'play.mc4fun.net', port: '25565', username: '', password: '', autoSky: false });
-      saveData();
-      switchTab(botsData.length - 1);
+    function deleteTab(e, index) {
+      e.stopPropagation();
+      if (botTabs.length <= 1) return;
+      const bot = botTabs[index];
+      if (bot.username) socket.emit('stopBot', bot.username);
+      botTabs.splice(index, 1);
+      if (activeTabIndex >= botTabs.length) activeTabIndex = botTabs.length - 1;
+      saveTabsToStorage();
+      switchTab(activeTabIndex);
+    }
+
+    function loadActiveTabFields() {
+      const bot = botTabs[activeTabIndex];
+      document.getElementById('host').value = bot.host || 'play.mc4fun.net';
+      document.getElementById('port').value = bot.port || '25565';
+      document.getElementById('username').value = bot.username || '';
+      document.getElementById('password').value = bot.password || '';
+      document.getElementById('autoSkyblock').checked = bot.autoSkyblock || false;
+      document.getElementById('autoReconnect').checked = bot.autoReconnect !== false;
+      document.getElementById('cmdDelay').value = bot.cmdDelay || '3000';
+    }
+
+    function updateActiveTabData() {
+      const bot = botTabs[activeTabIndex];
+      bot.host = document.getElementById('host').value;
+      bot.port = document.getElementById('port').value;
+      bot.username = document.getElementById('username').value.trim();
+      bot.password = document.getElementById('password').value;
+      bot.autoSkyblock = document.getElementById('autoSkyblock').checked;
+      bot.autoReconnect = document.getElementById('autoReconnect').checked;
+      bot.cmdDelay = document.getElementById('cmdDelay').value;
+      saveTabsToStorage();
+      renderTabs();
     }
 
     function getActiveUsername() {
-      return document.getElementById('cfgUsername').value.trim();
+      return document.getElementById('username').value.trim();
     }
 
-    function startCurrentBot() {
-      saveData();
-      const bot = botsData[activeBotIndex];
-      if(!bot.username) return alert("Kullanıcı adı girin!");
-      socket.emit('startBot', { host: bot.host, port: bot.port, username: bot.username, password: bot.password, autoSkyblock: bot.autoSky, autoReconnect: true });
+    // Server İşlemleri
+    function startBot() {
+      updateActiveTabData();
+      const bot = botTabs[activeTabIndex];
+      if (!bot.username) return alert('Lütfen geçerli bir bot ismi girin!');
+      socket.emit('startBot', bot);
     }
 
-    function stopCurrentBot() {
-      const user = getActiveUsername();
-      if(user) socket.emit('stopBot', user);
+    function stopBot() {
+      const username = getActiveUsername();
+      if (username) socket.emit('stopBot', username);
     }
 
-    function loginCurrentBot() {
-      const user = getActiveUsername();
-      const pwd = document.getElementById('cfgPassword').value;
-      if(user && pwd) socket.emit('sendLogin', { username: user, password: pwd });
+    function sendLogin() {
+      const username = getActiveUsername();
+      const password = document.getElementById('password').value;
+      socket.emit('sendLogin', { username, password });
     }
 
-    function sendChat() {
-      const input = document.getElementById('chatInput');
-      const user = getActiveUsername();
-      if(user && input.value.trim() !== '') {
-        socket.emit('sendMessage', { username: user, message: input.value });
+    function sendCmd(cmd) {
+      const username = getActiveUsername();
+      if (username) socket.emit('sendMessage', { username, message: cmd });
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      const username = getActiveUsername();
+      if (text !== '' && username) {
+        socket.emit('sendMessage', { username, message: text });
         input.value = '';
-        document.getElementById('autocompleteList').style.display = 'none';
+        hideSuggestions();
       }
     }
 
-    // Komut Tamamlama Mantığı
-    function handleChatInput(e) {
-      if(e.key === 'Enter') return sendChat();
-      const val = document.getElementById('chatInput').value;
-      const list = document.getElementById('autocompleteList');
-      list.innerHTML = '';
-      
-      if (!val || !val.startsWith('/')) {
-        list.style.display = 'none';
+    // Komut Öneri Menüsü Mantığı
+    function handleInput() {
+      const input = document.getElementById('messageInput');
+      const val = input.value;
+      const popup = document.getElementById('suggestionsPopup');
+
+      if (!val.startsWith('/')) {
+        hideSuggestions();
         return;
       }
 
-      const matches = commandList.filter(cmd => cmd.toLowerCase().includes(val.toLowerCase()));
+      const matches = commonCommands.filter(c => c.toLowerCase().includes(val.toLowerCase()));
       if (matches.length > 0) {
-        matches.forEach(match => {
-          const div = document.createElement('div');
-          div.innerHTML = `<strong>${match.substring(0, val.length)}</strong>${match.substring(val.length)}`;
-          div.onclick = () => {
-            document.getElementById('chatInput').value = match;
-            list.style.display = 'none';
-            document.getElementById('chatInput').focus();
+        popup.innerHTML = '';
+        matches.forEach((cmd, idx) => {
+          const item = document.createElement('div');
+          item.className = `suggestion-item ${idx === selectedSuggestionIndex ? 'active' : ''}`;
+          item.innerText = cmd;
+          item.onclick = () => {
+            input.value = cmd;
+            hideSuggestions();
+            input.focus();
           };
-          list.appendChild(div);
+          popup.appendChild(item);
         });
-        list.style.display = 'block';
+        popup.style.display = 'block';
       } else {
-        list.style.display = 'none';
+        hideSuggestions();
       }
     }
 
-    // Socket Dinlemeleri
-    socket.on('chat', (data) => {
-      if (data.username === getActiveUsername()) {
-        const box = document.getElementById('chatBox');
-        const div = document.createElement('div');
-        div.className = `chat-msg ${data.type === 'system' ? 'msg-system' : data.type === 'self' ? 'msg-self' : ''}`;
-        div.textContent = `[${data.time}] ${data.text}`;
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
+    function hideSuggestions() {
+      document.getElementById('suggestionsPopup').style.display = 'none';
+      selectedSuggestionIndex = -1;
+    }
+
+    function handleKeyDown(event) {
+      const popup = document.getElementById('suggestionsPopup');
+      const items = popup.getElementsByClassName('suggestion-item');
+
+      if (popup.style.display === 'block' && items.length > 0) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          selectedSuggestionIndex = (selectedSuggestionIndex + 1) % items.length;
+          updateSuggestionHighlight(items);
+          return;
+        } else if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          selectedSuggestionIndex = (selectedSuggestionIndex - 1 + items.length) % items.length;
+          updateSuggestionHighlight(items);
+          return;
+        } else if (event.key === 'Tab' || (event.key === 'Enter' && selectedSuggestionIndex >= 0)) {
+          event.preventDefault();
+          if (selectedSuggestionIndex >= 0 && items[selectedSuggestionIndex]) {
+            document.getElementById('messageInput').value = items[selectedSuggestionIndex].innerText;
+            hideSuggestions();
+          }
+          return;
+        }
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        sendMessage();
+      }
+    }
+
+    function updateSuggestionHighlight(items) {
+      for (let i = 0; i < items.length; i++) {
+        items[i].classList.toggle('active', i === selectedSuggestionIndex);
+      }
+    }
+
+    // Socket Dinleyicileri
+    socket.on('initData', (botList) => {
+      const currentUname = getActiveUsername();
+      const botData = botList.find(b => b.username === currentUname);
+      const chatBox = document.getElementById('chat-box');
+      chatBox.innerHTML = '';
+
+      if (botData) {
+        updateStatusUI(botData.status);
+        botData.chatHistory.forEach(msg => appendChatMessage(msg));
+      } else {
+        updateStatusUI('offline');
       }
     });
 
-    socket.on('chatHistory', (data) => {
+    socket.on('statusUpdate', (data) => {
       if (data.username === getActiveUsername()) {
-        const box = document.getElementById('chatBox');
-        box.innerHTML = '';
-        data.history.forEach(h => {
-          const div = document.createElement('div');
-          div.className = `chat-msg ${h.type === 'system' ? 'msg-system' : h.type === 'self' ? 'msg-self' : ''}`;
-          div.textContent = `[${h.time}] ${h.text}`;
-          box.appendChild(div);
-        });
-        box.scrollTop = box.scrollHeight;
+        updateStatusUI(data.status);
       }
     });
 
-    socket.on('status', (data) => {
-      if (data.username === getActiveUsername()) {
-        const badge = document.getElementById('uiStatus');
-        badge.textContent = data.status === 'online' ? 'Çevrimiçi' : data.status === 'connecting' ? 'Bağlanıyor...' : 'Çevrimdışı';
-        badge.className = `status-badge ${data.status}`;
+    function updateStatusUI(status) {
+      const badge = document.getElementById('statusBadge');
+      const text = document.getElementById('statusText');
+      if (status === 'online') {
+        badge.className = 'badge badge-online';
+        text.innerText = 'Çevrimiçi (Oyunda)';
+      } else if (status === 'connecting') {
+        badge.className = 'badge badge-connecting';
+        text.innerText = 'Bağlanılıyor...';
+      } else {
+        badge.className = 'badge badge-offline';
+        text.innerText = 'Çevrimdışı';
+        document.getElementById('statHealth').innerText = '-';
+        document.getElementById('statFood').innerText = '-';
+        document.getElementById('statPos').innerText = '- / - / -';
+        document.getElementById('guiBox').style.display = 'none';
       }
-    });
+    }
 
     socket.on('statsUpdate', (data) => {
       if (data.username === getActiveUsername()) {
-        document.getElementById('uiHealth').textContent = data.health;
-        document.getElementById('uiFood').textContent = data.food;
-        document.getElementById('uiPos').textContent = `${data.pos.x}, ${data.pos.y}, ${data.pos.z}`;
+        document.getElementById('statHealth').innerText = data.health + ' / 20';
+        document.getElementById('statFood').innerText = data.food + ' / 20';
+        document.getElementById('statPos').innerText = `${data.pos.x}, ${data.pos.y}, ${data.pos.z}`;
       }
     });
+
+    socket.on('chatMessage', (msg) => {
+      if (msg.username === getActiveUsername()) {
+        appendChatMessage(msg);
+      }
+    });
+
+    function appendChatMessage(msg) {
+      const box = document.getElementById('chat-box');
+      const div = document.createElement('div');
+      div.className = 'chat-msg';
+      if (msg.type === 'system') div.classList.add('system-msg');
+      if (msg.type === 'self') div.classList.add('self-msg');
+      div.textContent = `[${msg.time}] ${msg.text}`;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // Sandık / GUI Yönetimi
+    socket.on('openWindow', (gui) => {
+      if (gui.username !== getActiveUsername()) return;
+      document.getElementById('guiTitle').innerText = gui.title;
+      const grid = document.getElementById('chestGrid');
+      grid.innerHTML = '';
+      document.getElementById('guiBox').style.display = 'block';
+
+      gui.slots.forEach((item) => {
+        const slotEl = document.createElement('div');
+        slotEl.className = 'slot';
+
+        if (!item.empty && item.name) {
+          const imgUrl = `https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.19/assets/minecraft/textures/item/${item.name}.png`;
+          slotEl.innerHTML = `
+            <img src="${imgUrl}" onerror="this.src='https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.19/assets/minecraft/textures/block/${item.name}.png'">
+            ${item.count > 1 ? `<span class="slot-count">${item.count}</span>` : ''}
+          `;
+
+          slotEl.onmousemove = (e) => {
+            const tooltip = document.getElementById('mcTooltip');
+            let html = `<b style="color:#fbbf24">${item.displayName}</b>`;
+            if (item.lore && item.lore.length > 0) {
+              html += `<br><span style="color:#cbd5e1">${item.lore.join('<br>')}</span>`;
+            }
+            tooltip.innerHTML = html;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX + 14) + 'px';
+            tooltip.style.top = (e.clientY + 14) + 'px';
+          };
+
+          slotEl.onmouseleave = () => {
+            document.getElementById('mcTooltip').style.display = 'none';
+          };
+        }
+
+        slotEl.onclick = () => {
+          socket.emit('clickSlot', { username: getActiveUsername(), slotIndex: item.slot });
+        };
+
+        grid.appendChild(slotEl);
+      });
+    });
+
+    socket.on('closeWindow', (data) => {
+      if (data.username === getActiveUsername()) {
+        document.getElementById('guiBox').style.display = 'none';
+        document.getElementById('mcTooltip').style.display = 'none';
+      }
+    });
+
+    function closeGui() {
+      document.getElementById('guiBox').style.display = 'none';
+      document.getElementById('mcTooltip').style.display = 'none';
+      socket.emit('closeCurrentWindow', getActiveUsername());
+    }
 
     // Başlangıç Yüklemesi
     window.onload = () => {
       renderTabs();
-      switchTab(0);
+      loadActiveTabFields();
     };
   </script>
 </body>
